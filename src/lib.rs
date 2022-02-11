@@ -1,4 +1,4 @@
-extern crate cgmath;
+extern crate glam;
 extern crate xml;
 #[macro_use]
 extern crate lazy_static;
@@ -14,7 +14,7 @@ extern crate ply_rs;
 #[macro_use]
 extern crate quick_error;
 
-use cgmath::*;
+use glam::*;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
@@ -270,8 +270,8 @@ pub enum Value {
     Float(f32),
     Spectrum(Spectrum),
     String(String),
-    Vector(Vector3<f32>),
-    Point(Point3<f32>),
+    Vector(Vec3A),
+    Point(Vec3A),
     Integer(i32),
     Boolean(bool),
     Ref(String),
@@ -296,8 +296,8 @@ value_as!(as_float, Value::Float => f32);
 value_as!(as_int, Value::Integer => i32);
 value_as!(as_bool, Value::Boolean => bool);
 value_as!(as_spectrum, Value::Spectrum => Spectrum);
-value_as!(as_vec, Value::Vector => Vector3<f32>);
-value_as!(as_point, Value::Point => Point3<f32>);
+value_as!(as_vec, Value::Vector => Vec3A);
+value_as!(as_point, Value::Point => Vec3A);
 
 impl Value {
     // Conversions
@@ -369,7 +369,7 @@ fn found_attrib_or(
 fn found_attrib_vec(
     attrs: &Vec<xml::attribute::OwnedAttribute>,
     name: &str,
-) -> Option<Vector3<f32>> {
+) -> Option<Vec3A> {
     match found_attrib(attrs, name) {
         Some(v) => {
             let v = v
@@ -378,7 +378,7 @@ fn found_attrib_vec(
                 .map(|v| v.trim().parse::<f32>().unwrap())
                 .collect::<Vec<_>>();
             assert_eq!(v.len(), 3);
-            Some(Vector3::new(v[0], v[1], v[2]))
+            Some(Vec3A::new(v[0], v[1], v[2]))
         }
         None => None,
     }
@@ -522,7 +522,7 @@ where
                         .unwrap_or("0.0".to_string())
                         .parse::<f32>()
                         .unwrap();
-                    map.insert(name, Value::Vector(Vector3::new(x, y, z)));
+                    map.insert(name, Value::Vector(Vec3A::new(x, y, z)));
                     opened = true;
                 }
                 "point" => {
@@ -539,7 +539,7 @@ where
                         .unwrap_or("0.0".to_string())
                         .parse::<f32>()
                         .unwrap();
-                    map.insert(name, Value::Point(Point3::new(x, y, z)));
+                    map.insert(name, Value::Point(Vec3A::new(x, y, z)));
                     opened = true;
                 }
                 "string" => {
@@ -1112,21 +1112,21 @@ pub enum Texture {
         filename: String,
         filter_type: String,
         gamma: f32,
-        offset: Vector2<f32>,
-        scale: Vector2<f32>,
+        offset: Vec2,
+        scale: Vec2,
     },
     Checkerboard {
         color0: Spectrum, // 0.4
         color1: Spectrum, // 0.2
-        offset: Vector2<f32>,
-        scale: Vector2<f32>,
+        offset: Vec2,
+        scale: Vec2,
     },
     GridTexture {
         color0: Spectrum, // 0.4
         color1: Spectrum, // 0.2
         line_width: f32,  // 0.01
-        offset: Vector2<f32>,
-        scale: Vector2<f32>,
+        offset: Vec2,
+        scale: Vec2,
     },
     // TODO: Implement scale
     Scale {
@@ -1148,8 +1148,8 @@ impl Texture {
         let voffset = read_value(&mut map, "voffset", Value::Float(0.0)).as_float()?;
         let uscale = read_value(&mut map, "uscale", Value::Float(1.0)).as_float()?;
         let vscale = read_value(&mut map, "vscale", Value::Float(1.0)).as_float()?;
-        let offset = Vector2::new(uoffset, voffset);
-        let scale = Vector2::new(uscale, vscale);
+        let offset = Vec2::new(uoffset, voffset);
+        let scale = Vec2::new(uscale, vscale);
 
         match texture_type {
             "bitmap" => {
@@ -1226,7 +1226,7 @@ pub struct SkyEmitterParam {
 
 #[derive(Debug)]
 pub enum SunDirection {
-    Vector(Vector3<f32>),
+    Vector(Vec3A),
     DateAndPos {
         year: i32,      // i32 2010
         month: i32,     // i32 07
@@ -1283,15 +1283,15 @@ pub enum Emitter {
     // Point light
     Point {
         to_world: Transform,
-        position: Point3<f32>,
+        position: Vec3A,
         intensity: Spectrum,  // 1
         sampling_weight: f32, // 1
     },
     // Point light with normal
     PointNormal {
         to_world: Transform,
-        position: Point3<f32>,
-        normal: Vector3<f32>,
+        position: Vec3A,
+        normal: Vec3A,
         intensity: Spectrum,  // 1
         sampling_weight: f32, // 1
     },
@@ -1307,7 +1307,7 @@ pub enum Emitter {
     // Directional
     Directional {
         to_world: Transform,     // Id
-        direction: Vector3<f32>, // Mandatory
+        direction: Vec3A, // Mandatory
         irradiance: Spectrum,    // 1
         sampling_weight: f32,    // 1
     },
@@ -1348,7 +1348,7 @@ impl Emitter {
         defaults: &HashMap<String, String>,
         emitter_type: &str,
     ) -> Result<Self> {
-        let mut to_world = Transform(Matrix4::one());
+        let mut to_world = Transform(Mat4::IDENTITY);
         // TODO: Texture
         let f = |events: &mut Events<R>, t: &str, _: HashMap<String, String>| -> Result<bool> {
             match t {
@@ -1690,13 +1690,13 @@ pub enum Shape {
         option: ShapeOption,
     },
     Sphere {
-        center: Point3<f32>, // (0,0,0)
+        center: Vec3A, // (0,0,0)
         radius: f32,         // 1
         option: ShapeOption,
     },
     Cylinder {
-        p0: Point3<f32>, // (0,0,0)
-        p1: Point3<f32>, // (0,0,1)
+        p0: Vec3A, // (0,0,0)
+        p1: Vec3A, // (0,0,1)
         radius: f32,     // 1
         option: ShapeOption,
     },
@@ -1850,7 +1850,7 @@ impl Shape {
             "cube" => Ok(Shape::Cube { option }),
             "sphere" => {
                 let center =
-                    read_value(&mut map, "center", Value::Point(Point3::new(0.0, 0.0, 0.0)))
+                    read_value(&mut map, "center", Value::Point(Vec3A::new(0.0, 0.0, 0.0)))
                         .as_point()?;
                 let radius = read_value(&mut map, "radius", Value::Float(1.0)).as_float()?;
                 Ok(Shape::Sphere {
@@ -1860,9 +1860,9 @@ impl Shape {
                 })
             }
             "cylinder" => {
-                let p0 = read_value(&mut map, "p0", Value::Point(Point3::new(0.0, 0.0, 0.0)))
+                let p0 = read_value(&mut map, "p0", Value::Point(Vec3A::new(0.0, 0.0, 0.0)))
                     .as_point()?;
-                let p1 = read_value(&mut map, "p1", Value::Point(Point3::new(0.0, 0.0, 1.0)))
+                let p1 = read_value(&mut map, "p1", Value::Point(Vec3A::new(0.0, 0.0, 1.0)))
                     .as_point()?;
                 let radius = read_value(&mut map, "radius", Value::Float(1.0)).as_float()?;
                 Ok(Shape::Cylinder {
@@ -1912,10 +1912,10 @@ impl Film {
 }
 
 #[derive(Debug, Clone)]
-pub struct Transform(Matrix4<f32>);
+pub struct Transform(Mat4);
 impl Transform {
     pub fn parse<R: Read>(events: &mut Events<R>) -> Self {
-        let mut trans = Matrix4::one();
+        let mut trans = Mat4::IDENTITY;
         let mut opened = 1;
         for e in events {
             match e {
@@ -1932,7 +1932,7 @@ impl Transform {
                         let z = found_attrib_or(&attributes, "z", "0.0")
                             .parse::<f32>()
                             .unwrap();
-                        trans = trans * Matrix4::from_translation(Vector3::new(x, y, z));
+                        trans = trans * Mat4::from_translation(Vec3::new(x, y, z));
                         opened += 1;
                     }
                     "scale" => {
@@ -1940,7 +1940,7 @@ impl Transform {
                         match value {
                             Some(v) => {
                                 let v = v.parse::<f32>().unwrap();
-                                trans = trans * Matrix4::from_scale(v);
+                                trans = trans * Mat4::from_scale(Vec3::new(v, v, v));
                             }
                             None => {
                                 let x = found_attrib_or(&attributes, "x", "1.0")
@@ -1953,7 +1953,7 @@ impl Transform {
                                     .parse::<f32>()
                                     .unwrap();
 
-                                trans = trans * Matrix4::from_nonuniform_scale(x, y, z);
+                                trans = trans * Mat4::from_scale(Vec3::new(x, y, z));
                             }
                         }
                         opened += 1;
@@ -1972,9 +1972,9 @@ impl Transform {
                             .unwrap()
                             .parse::<f32>()
                             .unwrap();
-                        let axis = Vector3::new(x, y, z);
+                        let axis = Vec3::new(x, y, z);
 
-                        trans = trans * Matrix4::from_axis_angle(axis, Deg(-angle));
+                        trans = trans * Mat4::from_axis_angle(axis, (-angle).to_degrees());
                         opened += 1;
                     }
                     "matrix" => {
@@ -2003,11 +2003,11 @@ impl Transform {
                         let m32 = values[14];
                         let m33 = values[15];
                         #[rustfmt::skip]
-                        let matrix = Matrix4::new(
+                        let matrix = Mat4::from_cols_array(&[
                             m00, m01, m02, m03, 
                             m10, m11, m12, m13, 
                             m20, m21, m22, m23, 
-                            m30, m31, m32, m33,
+                            m30, m31, m32, m33]
                         );
 
                         trans = trans * matrix;
@@ -2024,9 +2024,9 @@ impl Transform {
                         let new_up = dir.cross(left);
 
                         // use cgmath::Transform;
-                        let matrix = Matrix4::new(
+                        let matrix = Mat4::from_cols_array(&[
                             left.x, left.y, left.z, 0.0, new_up.x, new_up.y, new_up.z, 0.0, dir.x,
-                            dir.y, dir.z, 0.0, origin.x, origin.y, origin.z, 1.0,
+                            dir.y, dir.z, 0.0, origin.x, origin.y, origin.z, 1.0]
                         )
                         .transpose();
 
@@ -2052,7 +2052,7 @@ impl Transform {
         Transform(trans.transpose())
     }
 
-    pub fn as_matrix(self) -> Matrix4<f32> {
+    pub fn as_matrix(self) -> Mat4 {
         self.0
     }
 }
@@ -2083,7 +2083,7 @@ impl Sensor {
 
         // Use closure to initialize these extra stuffs
         let mut film = None;
-        let mut to_world = Transform(Matrix4::one());
+        let mut to_world = Transform(Mat4::IDENTITY);
         let f = |events: &mut Events<R>, t: &str, _: HashMap<String, String>| -> Result<bool> {
             match t {
                 "film" => film = Some(Film::parse(events, defaults)?),

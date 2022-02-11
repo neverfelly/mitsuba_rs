@@ -1,4 +1,4 @@
-use cgmath::*;
+use glam::*;
 use ply_rs::parser;
 use ply_rs::ply;
 
@@ -32,18 +32,18 @@ impl ply::PropertyAccess for PlyFace {
 }
 
 struct PlyVertex {
-    pos: Vector3<f32>,
-    normal: Vector3<f32>,
-    uv: Vector2<f32>,
+    pos: Vec3A,
+    normal: Vec3A,
+    uv: Vec2,
     has_normal: bool,
     has_uv: bool,
 }
 impl ply::PropertyAccess for PlyVertex {
     fn new() -> Self {
         PlyVertex {
-            pos: Vector3::new(0.0, 0.0, 0.0),
-            normal: Vector3::new(0.0, 0.0, 0.0),
-            uv: Vector2::new(0.0, 0.0),
+            pos: Vec3A::new(0.0, 0.0, 0.0),
+            normal: Vec3A::new(0.0, 0.0, 0.0),
+            uv: Vec2::new(0.0, 0.0),
             has_normal: false,
             has_uv: false,
         }
@@ -88,10 +88,10 @@ impl ply::PropertyAccess for PlyVertex {
 }
 
 pub struct PlyLoaded {
-    pub indices: Vec<Vector3<usize>>,
-    pub points: Vec<Point3<f32>>,
-    pub normals: Option<Vec<Vector3<f32>>>,
-    pub uv: Option<Vec<Vector2<f32>>>,
+    pub indices: Vec<UVec3>,
+    pub points: Vec<Vec3A>,
+    pub normals: Option<Vec<Vec3A>>,
+    pub uv: Option<Vec<Vec2>>,
 }
 
 pub fn read_ply(filename: &std::path::Path) -> PlyLoaded {
@@ -132,10 +132,10 @@ pub fn read_ply(filename: &std::path::Path) -> PlyLoaded {
     let mut indices = Vec::new();
     for f in face_list {
         if f.vertex_index.len() == 3 {
-            indices.push(Vector3::new(
-                f.vertex_index[0] as usize,
-                f.vertex_index[1] as usize,
-                f.vertex_index[2] as usize,
+            indices.push(UVec3::new(
+                f.vertex_index[0] as u32,
+                f.vertex_index[1] as u32,
+                f.vertex_index[2] as u32,
             ));
         } else if f.vertex_index.len() == 4 {
             // Quad is detected
@@ -144,15 +144,15 @@ pub fn read_ply(filename: &std::path::Path) -> PlyLoaded {
                 .into_iter()
                 .map(|v| v as usize)
                 .collect::<Vec<usize>>();
-            indices.push(Vector3::new(
-                quad_indices[0],
-                quad_indices[1],
-                quad_indices[2],
+            indices.push(UVec3::new(
+                quad_indices[0] as u32,
+                quad_indices[1] as u32,
+                quad_indices[2] as u32,
             ));
-            indices.push(Vector3::new(
-                quad_indices[2],
-                quad_indices[3],
-                quad_indices[0],
+            indices.push(UVec3::new(
+                quad_indices[2] as u32,
+                quad_indices[3] as u32,
+                quad_indices[0] as u32,
             ));
         } else {
         }
@@ -169,7 +169,7 @@ pub fn read_ply(filename: &std::path::Path) -> PlyLoaded {
     };
     let vertex_list = vertex_list
         .into_iter()
-        .map(|v| Point3::from_vec(v.pos))
+        .map(|v| Vec3A::from(v.pos))
         .collect();
 
     PlyLoaded {

@@ -5,7 +5,7 @@ use std::io::{BufReader, Cursor, Read, Seek};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
-use cgmath::*;
+use glam::*;
 
 bitflags! {
     struct Flags: u32 {
@@ -21,11 +21,11 @@ bitflags! {
 
 pub struct Serialized {
     pub name: String,
-    pub vertices: Vec<Vector3<f32>>,
-    pub normals: Option<Vec<Vector3<f32>>>,
-    pub texcoords: Option<Vec<Vector2<f32>>>,
-    pub color: Option<Vec<Vector3<f32>>>,
-    pub indices: Vec<Vector3<usize>>,
+    pub vertices: Vec<Vec3A>,
+    pub normals: Option<Vec<Vec3A>>,
+    pub texcoords: Option<Vec<Vec2>>,
+    pub color: Option<Vec<Vec3A>>,
+    pub indices: Vec<UVec3>,
     pub face_normal: bool,
 }
 
@@ -118,7 +118,7 @@ pub fn read_serialized(s: &SerializedShape, wk: &std::path::Path) -> Serialized 
             let x = read_float(&mut f);
             let y = read_float(&mut f);
             let z = read_float(&mut f);
-            Vector3::new(x, y, z)
+            Vec3A::new(x, y, z)
         })
         .collect();
 
@@ -129,7 +129,7 @@ pub fn read_serialized(s: &SerializedShape, wk: &std::path::Path) -> Serialized 
                     let x = read_float(&mut f);
                     let y = read_float(&mut f);
                     let z = read_float(&mut f);
-                    Vector3::new(x, y, z)
+                    Vec3A::new(x, y, z)
                 })
                 .collect(),
         )
@@ -143,7 +143,7 @@ pub fn read_serialized(s: &SerializedShape, wk: &std::path::Path) -> Serialized 
                 .map(|_| {
                     let u = read_float(&mut f);
                     let v = read_float(&mut f);
-                    Vector2::new(u, v)
+                    Vec2::new(u, v)
                 })
                 .collect(),
         )
@@ -158,7 +158,7 @@ pub fn read_serialized(s: &SerializedShape, wk: &std::path::Path) -> Serialized 
                     let x = read_float(&mut f);
                     let y = read_float(&mut f);
                     let z = read_float(&mut f);
-                    Vector3::new(x, y, z)
+                    Vec3A::new(x, y, z)
                 })
                 .collect(),
         )
@@ -170,20 +170,20 @@ pub fn read_serialized(s: &SerializedShape, wk: &std::path::Path) -> Serialized 
         // use u64
         (0..nb_tri)
             .map(|_| {
-                let x = f.read_u64::<LittleEndian>().unwrap() as usize;
-                let y = f.read_u64::<LittleEndian>().unwrap() as usize;
-                let z = f.read_u64::<LittleEndian>().unwrap() as usize;
-                Vector3::new(x, y, z)
+                let x = f.read_u64::<LittleEndian>().unwrap() as u32;
+                let y = f.read_u64::<LittleEndian>().unwrap() as u32;
+                let z = f.read_u64::<LittleEndian>().unwrap() as u32;
+                UVec3::new(x, y, z)
             })
             .collect()
     } else {
         // use u32
         (0..nb_tri)
             .map(|_| {
-                let x = f.read_u32::<LittleEndian>().unwrap() as usize;
-                let y = f.read_u32::<LittleEndian>().unwrap() as usize;
-                let z = f.read_u32::<LittleEndian>().unwrap() as usize;
-                Vector3::new(x, y, z)
+                let x = f.read_u32::<LittleEndian>().unwrap();
+                let y = f.read_u32::<LittleEndian>().unwrap();
+                let z = f.read_u32::<LittleEndian>().unwrap();
+                UVec3::new(x, y, z)
             })
             .collect()
     };
